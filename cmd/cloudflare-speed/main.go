@@ -11,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/coleaeason/cloudflare-speed/internal/log"
+	"github.com/coleaeason/cloudflare-speed/internal/math"
 )
 
 func main() {
@@ -193,7 +196,7 @@ func measureLatency() ([]float64, error) {
 		}
 	}
 
-	return []float64{min, max, Average(measurements), Median(measurements), Jitter(measurements)}, nil
+	return []float64{min, max, math.Average(measurements), math.Median(measurements), math.Jitter(measurements)}, nil
 }
 
 func measureDownload(bytes, iterations int) ([]float64, error) {
@@ -247,43 +250,43 @@ func speedTest() error {
 	}
 
 	city := serverLocationData[traceData["colo"]]
-	Info("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]))
-	Info("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]))
+	log.Info("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]))
+	log.Info("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]))
 
-	Latency(pingResults)
+	log.Latency(pingResults)
 
 	testDown1, err := measureDownload(101000, 10)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100kB download: %w", err)
 	}
-	SpeedTestResult("100kB", testDown1, Median)
+	log.SpeedTestResult("100kB", testDown1, math.Median)
 
 	testDown2, err := measureDownload(1001000, 8)
 	if err != nil {
 		return fmt.Errorf("failed to measure 1MB download: %w", err)
 	}
-	SpeedTestResult("1MB", testDown2, Median)
+	log.SpeedTestResult("1MB", testDown2, math.Median)
 
 	testDown3, err := measureDownload(10001000, 6)
 	if err != nil {
 		return fmt.Errorf("failed to measure 10MB download: %w", err)
 	}
-	SpeedTestResult("10MB", testDown3, Median)
+	log.SpeedTestResult("10MB", testDown3, math.Median)
 
 	testDown4, err := measureDownload(25001000, 4)
 	if err != nil {
 		return fmt.Errorf("failed to measure 25MB download: %w", err)
 	}
-	SpeedTestResult("25MB", testDown4, Median)
+	log.SpeedTestResult("25MB", testDown4, math.Median)
 
 	testDown5, err := measureDownload(100001000, 1)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100MB download: %w", err)
 	}
-	SpeedTestResult("100MB", testDown5, Median)
+	log.SpeedTestResult("100MB", testDown5, math.Median)
 
 	downloadTests := append(append(append(append(testDown1, testDown2...), testDown3...), testDown4...), testDown5...)
-	DownloadSpeed(downloadTests, Quartile)
+	log.DownloadSpeed(downloadTests, math.Quartile)
 
 	testUp1, err := measureUpload(11000, 10)
 	if err != nil {
@@ -301,7 +304,7 @@ func speedTest() error {
 	}
 
 	uploadTests := append(append(testUp1, testUp2...), testUp3...)
-	UploadSpeed(uploadTests, Quartile)
+	log.UploadSpeed(uploadTests, math.Quartile)
 
 	return nil
 }

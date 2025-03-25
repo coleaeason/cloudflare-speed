@@ -1,4 +1,4 @@
-module cloudflare-speed
+module github.com/coleaeason/cloudflare-speed
 
 go 1.18
 
