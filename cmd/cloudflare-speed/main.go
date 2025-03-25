@@ -8,67 +8,20 @@ import (
 	"net/http"
 	"net/http/httptrace"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/fatih/color"
 )
 
-// Stats utility functions
-func average(values []float64) float64 {
-	if len(values) == 0 {
-		return 0
+func main() {
+	fmt.Println("Cloudflare Speed Test")
+	if err := speedTest(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
-	var sum float64
-	for _, v := range values {
-		sum += v
-	}
-	return sum / float64(len(values))
 }
 
-func median(values []float64) float64 {
-	if len(values) == 0 {
-		return 0
-	}
-	sorted := make([]float64, len(values))
-	copy(sorted, values)
-	sort.Float64s(sorted)
-	mid := len(sorted) / 2
-	if len(sorted)%2 == 0 {
-		return (sorted[mid-1] + sorted[mid]) / 2
-	}
-	return sorted[mid]
-}
-
-func jitter(values []float64) float64 {
-	if len(values) <= 1 {
-		return 0
-	}
-	var sum float64
-	avg := average(values)
-	for _, v := range values {
-		sum += (v - avg) * (v - avg)
-	}
-	return (sum / float64(len(values)-1))
-}
-
-func quartile(values []float64, q float64) float64 {
-	if len(values) == 0 {
-		return 0
-	}
-	sorted := make([]float64, len(values))
-	copy(sorted, values)
-	sort.Float64s(sorted)
-	pos := int(float64(len(sorted)) * q)
-	if pos >= len(sorted) {
-		pos = len(sorted) - 1
-	}
-	return sorted[pos]
-}
-
-// HTTP client functionality
+// --- HTTP client functionality ---
 func get(hostname, path string) ([]byte, error) {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
@@ -240,7 +193,7 @@ func measureLatency() ([]float64, error) {
 		}
 	}
 
-	return []float64{min, max, average(measurements), median(measurements), jitter(measurements)}, nil
+	return []float64{min, max, Average(measurements), Median(measurements), Jitter(measurements)}, nil
 }
 
 func measureDownload(bytes, iterations int) ([]float64, error) {
@@ -277,46 +230,6 @@ func measureUpload(bytes, iterations int) ([]float64, error) {
 	return measurements, nil
 }
 
-func logInfo(text, data string) {
-	bold := color.New(color.Bold).SprintFunc()
-	blue := color.New(color.FgBlue).SprintFunc()
-	padding := 15 - len(text)
-	if padding < 0 {
-		padding = 0
-	}
-	fmt.Println(bold(strings.Repeat(" ", padding), text+":", blue(data)))
-}
-
-func logLatency(data []float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	magenta := color.New(color.FgMagenta).SprintFunc()
-	fmt.Println(bold("         Latency:", magenta(fmt.Sprintf("%.2f ms", data[3]))))
-	fmt.Println(bold("          Jitter:", magenta(fmt.Sprintf("%.2f ms", data[4]))))
-}
-
-func logSpeedTestResult(size string, test []float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	padding := 9 - len(size)
-	if padding < 0 {
-		padding = 0
-	}
-	speed := median(test)
-	fmt.Println(bold(strings.Repeat(" ", padding), size, "speed:", yellow(fmt.Sprintf("%.2f Mbps", speed))))
-}
-
-func logDownloadSpeed(tests []float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Println(bold("  Download speed:", green(fmt.Sprintf("%.2f Mbps", quartile(tests, 0.9)))))
-}
-
-func logUploadSpeed(tests []float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Println(bold("    Upload speed:", green(fmt.Sprintf("%.2f Mbps", quartile(tests, 0.9)))))
-}
-
 func speedTest() error {
 	pingResults, err := measureLatency()
 	if err != nil {
@@ -334,43 +247,43 @@ func speedTest() error {
 	}
 
 	city := serverLocationData[traceData["colo"]]
-	logInfo("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]))
-	logInfo("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]))
+	Info("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]))
+	Info("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]))
 
-	logLatency(pingResults)
+	Latency(pingResults)
 
 	testDown1, err := measureDownload(101000, 10)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100kB download: %w", err)
 	}
-	logSpeedTestResult("100kB", testDown1)
+	SpeedTestResult("100kB", testDown1, Median)
 
 	testDown2, err := measureDownload(1001000, 8)
 	if err != nil {
 		return fmt.Errorf("failed to measure 1MB download: %w", err)
 	}
-	logSpeedTestResult("1MB", testDown2)
+	SpeedTestResult("1MB", testDown2, Median)
 
 	testDown3, err := measureDownload(10001000, 6)
 	if err != nil {
 		return fmt.Errorf("failed to measure 10MB download: %w", err)
 	}
-	logSpeedTestResult("10MB", testDown3)
+	SpeedTestResult("10MB", testDown3, Median)
 
 	testDown4, err := measureDownload(25001000, 4)
 	if err != nil {
 		return fmt.Errorf("failed to measure 25MB download: %w", err)
 	}
-	logSpeedTestResult("25MB", testDown4)
+	SpeedTestResult("25MB", testDown4, Median)
 
 	testDown5, err := measureDownload(100001000, 1)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100MB download: %w", err)
 	}
-	logSpeedTestResult("100MB", testDown5)
+	SpeedTestResult("100MB", testDown5, Median)
 
 	downloadTests := append(append(append(append(testDown1, testDown2...), testDown3...), testDown4...), testDown5...)
-	logDownloadSpeed(downloadTests)
+	DownloadSpeed(downloadTests, Quartile)
 
 	testUp1, err := measureUpload(11000, 10)
 	if err != nil {
@@ -388,15 +301,7 @@ func speedTest() error {
 	}
 
 	uploadTests := append(append(testUp1, testUp2...), testUp3...)
-	logUploadSpeed(uploadTests)
+	UploadSpeed(uploadTests, Quartile)
 
 	return nil
-}
-
-func main() {
-	fmt.Println("Cloudflare Speed Test")
-	if err := speedTest(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
 }
