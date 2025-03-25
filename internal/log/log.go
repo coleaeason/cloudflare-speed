@@ -6,39 +6,35 @@ import (
 	"github.com/fatih/color"
 )
 
-// LogInfo prints general information with blue color highlights
-func Info(text, data string) {
-	bold := color.New(color.Bold).SprintFunc()
-	blue := color.New(color.FgBlue).SprintFunc()
-	fmt.Println(bold("\t", text+": ", blue(data)))
+// Available text styles
+var (
+	Bold    = color.New(color.Bold).SprintFunc()
+	Blue    = color.New(color.FgBlue).SprintFunc()
+	Green   = color.New(color.FgGreen).SprintFunc()
+	Yellow  = color.New(color.FgYellow).SprintFunc()
+	Magenta = color.New(color.FgMagenta).SprintFunc()
+	Red     = color.New(color.FgRed).SprintFunc()
+)
+
+// Print formats and prints a message with the given colorFunc for highlighted text
+func Print(prefix, format string, colorFunc func(...interface{}) string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	fmt.Println(Bold(prefix, colorFunc(msg)))
 }
 
-// LogLatency prints latency and jitter information with magenta color highlights
-func Latency(data []float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	magenta := color.New(color.FgMagenta).SprintFunc()
-	fmt.Println(bold("\tLatency: ", magenta(fmt.Sprintf("%.2f ms", data[3]))))
-	fmt.Println(bold("\tJitter:  ", magenta(fmt.Sprintf("%.2f ms", data[4]))))
+// PrintPair prints a key-value pair with the key in bold and value in the specified color
+func PrintPair(key, value string, colorFunc func(...interface{}) string) {
+	fmt.Println(Bold(key+": ", colorFunc(value)))
 }
 
-// LogSpeedTestResult prints individual speed test results with yellow color highlights
-func SpeedTestResult(size string, test []float64, medianFn func([]float64) float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	speed := medianFn(test)
-	fmt.Println(bold("\t", size, "speed: ", yellow(fmt.Sprintf("%.2f Mbps", speed))))
+// PrintValue prints a simple value with the given color
+func PrintValue(label string, value interface{}, colorFunc func(...interface{}) string) {
+	fmt.Println(Bold(label+": ", colorFunc(fmt.Sprintf("%v", value))))
 }
 
-// LogDownloadSpeed prints overall download speed with green color highlights
-func DownloadSpeed(tests []float64, quartileFn func([]float64, float64) float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Println(bold("\tDownload speed: ", green(fmt.Sprintf("%.2f Mbps", quartileFn(tests, 0.9)))))
-}
-
-// LogUploadSpeed prints overall upload speed with green color highlights
-func UploadSpeed(tests []float64, quartileFn func([]float64, float64) float64) {
-	bold := color.New(color.Bold).SprintFunc()
-	green := color.New(color.FgGreen).SprintFunc()
-	fmt.Println(bold("\tUpload speed: ", green(fmt.Sprintf("%.2f Mbps", quartileFn(tests, 0.9)))))
+// PrintFloat prints a float value with the given precision and unit
+func PrintFloat(label string, value float64, precision int, unit string, colorFunc func(...interface{}) string) {
+	format := fmt.Sprintf("%%.%df %s", precision, unit)
+	formatted := fmt.Sprintf(format, value)
+	fmt.Println(Bold(label+": ", colorFunc(formatted)))
 }

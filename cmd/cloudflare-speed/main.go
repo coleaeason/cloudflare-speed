@@ -250,44 +250,48 @@ func speedTest() error {
 	}
 
 	city := serverLocationData[traceData["colo"]]
-	log.Info("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]))
-	log.Info("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]))
+	log.PrintPair("Server location", fmt.Sprintf("%s (%s)", city, traceData["colo"]), log.Blue)
+	log.PrintPair("Your IP", fmt.Sprintf("%s (%s)", traceData["ip"], traceData["loc"]), log.Blue)
 
-	log.Latency(pingResults)
+	// Print latency information
+	log.PrintFloat("Latency", pingResults[3], 2, "ms", log.Magenta)
+	log.PrintFloat("Jitter", pingResults[4], 2, "ms", log.Magenta)
 
+	// Download tests
 	testDown1, err := measureDownload(101000, 10)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100kB download: %w", err)
 	}
-	log.SpeedTestResult("100kB", testDown1, math.Median)
+	log.PrintFloat("100kB speed", math.Median(testDown1), 2, "Mbps", log.Yellow)
 
 	testDown2, err := measureDownload(1001000, 8)
 	if err != nil {
 		return fmt.Errorf("failed to measure 1MB download: %w", err)
 	}
-	log.SpeedTestResult("1MB", testDown2, math.Median)
+	log.PrintFloat("1MB speed", math.Median(testDown2), 2, "Mbps", log.Yellow)
 
 	testDown3, err := measureDownload(10001000, 6)
 	if err != nil {
 		return fmt.Errorf("failed to measure 10MB download: %w", err)
 	}
-	log.SpeedTestResult("10MB", testDown3, math.Median)
+	log.PrintFloat("10MB speed", math.Median(testDown3), 2, "Mbps", log.Yellow)
 
 	testDown4, err := measureDownload(25001000, 4)
 	if err != nil {
 		return fmt.Errorf("failed to measure 25MB download: %w", err)
 	}
-	log.SpeedTestResult("25MB", testDown4, math.Median)
+	log.PrintFloat("25MB speed", math.Median(testDown4), 2, "Mbps", log.Yellow)
 
 	testDown5, err := measureDownload(100001000, 1)
 	if err != nil {
 		return fmt.Errorf("failed to measure 100MB download: %w", err)
 	}
-	log.SpeedTestResult("100MB", testDown5, math.Median)
+	log.PrintFloat("100MB speed", math.Median(testDown5), 2, "Mbps", log.Yellow)
 
 	downloadTests := append(append(append(append(testDown1, testDown2...), testDown3...), testDown4...), testDown5...)
-	log.DownloadSpeed(downloadTests, math.Quartile)
+	log.PrintFloat("Download speed", math.Quartile(downloadTests, 0.9), 2, "Mbps", log.Green)
 
+	// Upload tests
 	testUp1, err := measureUpload(11000, 10)
 	if err != nil {
 		return fmt.Errorf("failed to measure 11kB upload: %w", err)
@@ -304,7 +308,7 @@ func speedTest() error {
 	}
 
 	uploadTests := append(append(testUp1, testUp2...), testUp3...)
-	log.UploadSpeed(uploadTests, math.Quartile)
+	log.PrintFloat("Upload speed", math.Quartile(uploadTests, 0.9), 2, "Mbps", log.Green)
 
 	return nil
 }
